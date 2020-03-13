@@ -1,49 +1,28 @@
-FROM alpine:3.10
+FROM alpine:latest
 LABEL Maintainer="Tim de Pater <code@trafex.nl>" \
       Description="Lightweight container with Nginx 1.16 & PHP-FPM 7.3 based on Alpine Linux."
 
 # Install packages
 RUN apk --no-cache add php7 php7-fpm php7-mysqli php7-json php7-openssl php7-curl \
     php7-zlib php7-xml php7-phar php7-intl php7-dom php7-xmlreader php7-ctype php7-session \
-    php7-mbstring php7-gd nginx supervisor curl
+    php7-mbstring php7-gd nginx curl bash
 
-# Configure nginx
-COPY nginx.conf /etc/nginx/nginx.conf
-# Remove default server definition
+RUN echo "$(echo 'pid /run/nginx.pid;' | cat - /etc/nginx/nginx.conf)" > /etc/nginx/nginx.conf
+
+RUN mkdir /app
+
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Configure PHP-FPM
-COPY fpm-pool.conf /etc/php7/php-fpm.d/www.conf
-COPY php.ini /etc/php7/conf.d/custom.ini
+COPY simabes.conf /etc/nginx/conf.d/
 
-# Configure supervisord
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY simabes /app
 
-# Setup document root
-RUN mkdir -p /var/www/html
+RUN echo -e '[Date]\ndate.timezone="Asia/Jakarta"' > /etc/php7/php.ini
 
-# Make sure files/folders needed by the processes are accessable when they run under the nobody user
-#RUN chown -R ubuntu.ubuntu /var/www/html && \
-#  chown -R ubuntu.ubuntu /run && \
-#  chown -R ubuntu.ubuntu /var/lib/nginx && \
-#  chown -R ubuntu.ubuntu /var/tmp/nginx && \
-#  chown -R ubuntu.ubuntu /var/log/nginx
+COPY start.sh /
 
-# Make the document root a volume
-VOLUME /var/www/html
+RUN chmod +x /start.sh
 
-# Switch to use a non-root user from here on
-#USER ubuntu
+EXPOSE 80
 
-# Add application
-WORKDIR /var/www/html
-COPY simabes /var/www/html/
-
-# Expose the port nginx is reachable on
-EXPOSE 80 8500
-
-# Let supervisord start nginx & php-fpm
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
-# Configure a healthcheck to validate that everything is up&running
-HEALTHCHECK --timeout=10s CMD curl --silent --fail http://127.0.0.1:8500/fpm-ping
+ENTRYPOINT ["/start.sh"]
