@@ -22,7 +22,7 @@ COPY simabes.conf /etc/nginx/conf.d/
 
 COPY simabes /app
 
-RUN echo -e '[Date]\ndate.timezone="Asia/Jakarta"' > /etc/php5/php.ini
+RUN echo -e '[Date]\ndate.timezone="Asia/Jakarta"' >> /etc/php5/php.ini
 
 COPY start.sh /
 
